@@ -12,7 +12,7 @@ export interface Config {
   ttl?: number | null;
   /**
    * Keys or key patterns to include and persist
-   * If provided, only keys which match will be included.
+   * If provided, only matching keys will be included.
    */
   include?: (string | RegExp)[];
   /**
