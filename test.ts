@@ -11,7 +11,7 @@ const testAdapter = new class implements Adapter {
   items: Record<string, string> = {};
 
   setItems(items: Record<string, string>) {
-    this.items = items;
+    this.items = { ...this.items, ...items };
   }
 
   getItems() {
@@ -71,21 +71,47 @@ Deno.test("opearations", async (t) => {
   });
 });
 
-Deno.test("opearations with TTL", async () => {
+Deno.test("opearations with TTL", async (t) => {
   localStorage.clear();
   testAdapter.items = {};
   // WARNING: Do NOT use a TTL as low as 50. This is only for testing purposes.
   await setup({ adapter: testAdapter, ttl: 50 });
-  localStorage.setItem("test_key", "test_value");
-  const fn0 = () =>
-    assertEquals(
-      Object.fromEntries(Object.entries(localStorage)),
-      testAdapter.items,
-    );
-  await wait(10);
-  assertThrows(fn0);
-  await wait(50);
-  fn0();
+  await t.step("set", async () => {
+    localStorage.setItem("test_key", "test_value");
+    localStorage.setItem("test_key2", "test_value2");
+    localStorage.setItem("test_key3", "test_value3");
+    const fn0 = () =>
+      assertEquals(
+        Object.fromEntries(Object.entries(localStorage)),
+        testAdapter.items,
+      );
+    await wait(10);
+    assertThrows(fn0);
+    await wait(40);
+    fn0();
+  });
+  await t.step("update", async () => {
+    localStorage.setItem("test_key2", "test_value3");
+    localStorage.setItem("test_key3", "test_value2");
+    const fn0 = () =>
+      assertEquals(testAdapter.items["test_key2"], "test_value3");
+    const fn1 = () =>
+      assertEquals(testAdapter.items["test_key3"], "test_value2");
+    await wait(10);
+    assertThrows(fn0);
+    assertThrows(fn1);
+    await wait(40);
+    fn0();
+    fn1();
+  });
+  await t.step("delete", async () => {
+    localStorage.removeItem("test_key");
+    const fn0 = () =>
+      assertThrows(() => assertExists(testAdapter.items["test_key"]));
+    await wait(10);
+    assertThrows(fn0);
+    await wait(40);
+  });
   await setup({ adapter: testAdapter, ttl: null });
 });
 
